@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+<title>빙고 카드</title>
+
+<!-- PWA -->
+<meta name="theme-color" content="#2563EB" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="빙고 카드" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+
+<!-- 온라인일 때만 불러오고, 오프라인이면 시스템 폰트로 우아하게 대체됩니다 -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet" />
+
+<style>
+  :root{
+    --ink:#14213D;
+    --ink-soft:#5C6B85;
+    --paper:#ECF2FB;
+    --surface:#FFFFFF;
+    --line:#DCE6F4;
+    --blue:#2563EB;
+    --blue-deep:#1E48C4;
+    --blue-tint:#E1ECFF;
+    --amber:#FFB020;
+    --amber-deep:#E0900A;
+    --amber-tint:#FFF3DA;
+    --green:#1F9D6B;
+    --green-tint:#E3F5EC;
+    --danger:#E5484D;
+    --pink:#FF4D8D;
+    --radius:20px;
+    --shadow:0 12px 30px rgba(20,33,61,.10);
+    --shadow-sm:0 4px 12px rgba(20,33,61,.08);
+    --display:'Jua', system-ui, sans-serif;
+    --body:-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic",
+           "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family:var(--body);
+    color:var(--ink);
+    background:#D8E4F5;
+    display:flex; justify-content:center;
+    min-height:100dvh;
+    overscroll-behavior:none;
+  }
+  button{ font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+
+  /* phone-like column */
+  .app{
+    width:100%; max-width:480px;
+    height:100dvh;
+    background:var(--paper);
+    display:flex; flex-direction:column;
+    overflow:hidden; position:relative;
+    box-shadow:0 0 60px rgba(30,64,140,.18);
+  }
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    flex:0 0 auto;
+    padding:calc(env(safe-area-inset-top,0) + 12px) 18px 12px;
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background:var(--paper);
+    z-index:20;
+  }
+  .brand{ display:flex; align-items:center; gap:9px; }
+  .brand .mark{
+    width:30px; height:30px; border-radius:9px;
+    background:var(--blue); color:#fff;
+    display:grid; place-items:center;
+    box-shadow:0 6px 14px rgba(37,99,235,.35);
+    transform:rotate(-6deg);
+  }
+  .brand .mark svg{ width:17px; height:17px; }
+  .brand .name{ font-family:var(--display); font-size:19px; letter-spacing:.3px; }
+
+  .dots{ display:flex; gap:7px; }
+  .dot{
+    width:7px; height:7px; border-radius:99px; background:#C3D2EC;
+    transition:width .3s ease, background .3s ease; cursor:pointer;
+  }
+  .dot.active{ width:22px; background:var(--blue); }
+
+  .reset-btn{
+    width:34px; height:34px; border-radius:10px;
+    display:grid; place-items:center; color:var(--ink-soft);
+    background:var(--surface); box-shadow:var(--shadow-sm);
+  }
+  .reset-btn:active{ transform:scale(.94); }
+  .reset-btn svg{ width:17px; height:17px; }
+
+  /* ---------- swipe area ---------- */
+  .viewport{ flex:1 1 auto; overflow:hidden; position:relative; }
+  .track{ height:100%; display:flex; will-change:transform; transition:transform .34s cubic-bezier(.4,.9,.3,1); }
+  .panel{ flex:0 0 100%; height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .panel-inner{ padding:6px 18px calc(env(safe-area-inset-bottom,0) + 26px); }
+
+  .eyebrow{
+    font-size:12px; font-weight:700; letter-spacing:2px; text-transform:uppercase;
+    color:var(--blue); margin-top:6px;
+  }
+
+  /* ---------- bingo panel ---------- */
+  .count-row{ display:flex; align-items:baseline; gap:8px; margin-top:4px; }
+  .count-num{ font-family:var(--display); font-size:52px; line-height:1; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .count-unit{ font-family:var(--display); font-size:22px; color:var(--blue); }
+  .count-sub{ font-size:13px; color:var(--ink-soft); margin-top:6px; }
+  .count-sub b{ color:var(--ink); font-weight:700; }
+
+  .board{
+    margin:18px 0 26px;
+    display:grid; grid-template-columns:repeat(5,1fr); gap:8px;
+  }
+  .cell{
+    position:relative; aspect-ratio:1/1;
+    border-radius:14px; background:var(--surface);
+    border:1.5px solid var(--line);
+    display:grid; place-items:center;
+    transition:transform .12s ease, border-color .2s ease, background .2s ease, box-shadow .2s ease;
+    box-shadow:0 2px 5px rgba(20,33,61,.05);
+  }
+  .cell .num{ font-family:var(--display); font-size:clamp(15px,4.6vw,21px); color:#A9B6CE; transition:opacity .15s ease; }
+  .cell .stamp{
+    position:absolute; inset:0; display:grid; place-items:center;
+    opacity:0; transform:scale(0);
+  }
+  .cell .stamp svg{ width:56%; height:56%; }
+  .cell.stamped{ background:var(--blue); border-color:var(--blue-deep); box-shadow:0 8px 16px rgba(37,99,235,.30); }
+  .cell.stamped .num{ opacity:0; }
+  .cell.stamped .stamp{ opacity:1; transform:scale(1); }
+  .cell.pop .stamp{ animation:stampIn .42s cubic-bezier(.2,1.3,.4,1) both; }
+  .cell.in-line{ box-shadow:0 0 0 3px var(--pink), 0 8px 18px rgba(255,77,141,.32); }
+  .cell.line-pulse{ animation:linePulse .6s ease both; }
+
+  @keyframes stampIn{
+    0%{ opacity:0; transform:scale(0) rotate(-24deg); }
+    55%{ opacity:1; transform:scale(1.22) rotate(6deg); }
+    100%{ opacity:1; transform:scale(1) rotate(0); }
+  }
+  @keyframes linePulse{
+    0%,100%{ transform:scale(1); }
+    40%{ transform:scale(1.09); }
+  }
+
+  .section-label{ font-family:var(--display); font-size:17px; margin:2px 0 12px; }
+
+  .prizes{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .prize{
+    position:relative; overflow:hidden;
+    border-radius:16px; padding:15px 14px 14px;
+    background:var(--surface); border:1.5px solid var(--line);
+    box-shadow:var(--shadow-sm);
+    transition:transform .18s ease, border-color .25s ease, background .25s ease;
+  }
+  .prize .p-top{ display:flex; align-items:center; justify-content:space-between; }
+  .prize .p-tier{ font-family:var(--display); font-size:15px; color:var(--ink-soft); }
+  .prize .p-badge{
+    width:26px; height:26px; border-radius:8px; display:grid; place-items:center;
+    background:var(--paper); color:#A9B6CE;
+  }
+  .prize .p-badge svg{ width:15px; height:15px; }
+  .prize .p-name{ font-family:var(--display); font-size:19px; margin:12px 0 4px; }
+  .prize .p-state{ font-size:12px; color:var(--ink-soft); }
+
+  /* achieved, not yet claimed → attach photos to receive */
+  .prize.ready{ background:var(--amber-tint); border-color:var(--amber); cursor:pointer;
+    animation:readyPulse 1.9s ease-in-out infinite; }
+  .prize.ready .p-tier{ color:var(--amber-deep); }
+  .prize.ready .p-badge{ background:var(--amber); color:#fff; }
+  .prize.ready .p-name{ color:var(--ink); }
+  .prize.ready .p-state{ color:var(--amber-deep); font-weight:800; }
+  .prize.ready::after{
+    content:"받기 가능"; position:absolute; top:12px; right:-28px;
+    background:var(--pink); color:#fff; font-size:10.5px; font-weight:800;
+    padding:3px 30px; transform:rotate(38deg); letter-spacing:.4px;
+  }
+  @keyframes readyPulse{
+    0%,100%{ box-shadow:var(--shadow-sm); }
+    50%{ box-shadow:0 0 0 3px var(--amber), 0 8px 18px rgba(255,176,32,.35); }
+  }
+  /* claimed → photos attached, ready to show organizer */
+  .prize.claimed{ background:var(--green-tint); border-color:var(--green); cursor:pointer; }
+  .prize.claimed .p-tier{ color:var(--green); }
+  .prize.claimed .p-badge{ background:var(--green); color:#fff; }
+  .prize.claimed .p-name{ color:var(--ink); }
+  .prize.claimed .p-state{ color:var(--green); font-weight:800; }
+  .prize.claimed::after{
+    content:"완료"; position:absolute; top:12px; right:-28px;
+    background:var(--green); color:#fff; font-size:10.5px; font-weight:800;
+    padding:3px 30px; transform:rotate(38deg); letter-spacing:.4px;
+  }
+  .prize:active{ transform:scale(.97); }
+
+  /* ---------- mission panel ---------- */
+  .m-progress{ font-family:var(--display); font-size:26px; margin-top:6px; }
+  .m-progress span{ color:var(--blue); font-variant-numeric:tabular-nums; }
+  .m-bar{ height:9px; border-radius:99px; background:#CFDCF0; overflow:hidden; margin:12px 0 22px; }
+  .m-bar i{ display:block; height:100%; width:0%; border-radius:99px;
+    background:linear-gradient(90deg,var(--blue),var(--pink)); transition:width .4s ease; }
+
+  .m-list{ display:flex; flex-direction:column; gap:10px; }
+  .m-row{
+    width:100%; text-align:left;
+    display:flex; align-items:center; gap:13px;
+    padding:14px 15px; border-radius:15px;
+    background:var(--surface); border:1.5px solid var(--line);
+    box-shadow:var(--shadow-sm);
+    transition:transform .12s ease, border-color .2s ease, background .2s ease;
+  }
+  .m-row:active{ transform:scale(.985); }
+  .m-check{
+    flex:0 0 auto; width:28px; height:28px; border-radius:9px;
+    border:2px solid #C3D2EC; background:var(--paper);
+    display:grid; place-items:center; color:#fff;
+    transition:background .2s ease, border-color .2s ease, transform .2s ease;
+  }
+  .m-check svg{ width:16px; height:16px; opacity:0; transform:scale(.4); transition:all .2s ease; }
+  .m-body{ flex:1 1 auto; min-width:0; }
+  .m-title{ display:block; font-weight:700; font-size:15.5px; }
+  .m-sub{ display:block; font-size:12.5px; color:var(--ink-soft); margin-top:2px; }
+  .m-state{
+    flex:0 0 auto; font-size:12px; font-weight:800; color:var(--blue);
+    background:var(--blue-tint); padding:5px 10px; border-radius:99px;
+    opacity:0; transition:opacity .2s ease;
+  }
+  .m-row.done{ background:var(--blue-tint); border-color:#BAD2FF; }
+  .m-row.done .m-check{ background:var(--blue); border-color:var(--blue); transform:rotate(0); }
+  .m-row.done .m-check svg{ opacity:1; transform:scale(1); }
+  .m-row.done .m-title{ color:var(--blue-deep); }
+  .m-row.done .m-state{ opacity:1; }
+
+  /* ---------- toast ---------- */
+  .toast{
+    position:fixed; left:50%; top:calc(env(safe-area-inset-top,0) + 64px);
+    transform:translateX(-50%) translateY(-18px);
+    background:var(--ink); color:#fff;
+    font-family:var(--display); font-size:15px;
+    padding:12px 20px; border-radius:14px;
+    box-shadow:0 16px 34px rgba(20,33,61,.4);
+    opacity:0; pointer-events:none; z-index:90;
+    max-width:88vw; text-align:center; white-space:nowrap;
+    transition:opacity .3s ease, transform .3s ease;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* ---------- confetti ---------- */
+  .confetti{
+    position:fixed; width:9px; height:14px; border-radius:2px;
+    z-index:80; pointer-events:none; transform:translate(-50%,-50%);
+    animation:conf .95s ease-out forwards;
+  }
+  @keyframes conf{
+    to{ transform:translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--rot)); opacity:0; }
+  }
+
+  /* ---------- modal ---------- */
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(20,33,61,.5);
+    display:grid; place-items:center; z-index:100; padding:24px;
+    opacity:0; animation:fade .2s ease forwards;
+  }
+  .modal-backdrop[hidden]{ display:none; }
+  @keyframes fade{ to{ opacity:1; } }
+  .modal{
+    width:100%; max-width:320px; background:var(--surface);
+    border-radius:20px; padding:24px 22px 18px; text-align:center;
+    box-shadow:0 24px 60px rgba(20,33,61,.4);
+  }
+  .modal-title{ font-family:var(--display); font-size:19px; }
+  .modal-text{ font-size:13.5px; color:var(--ink-soft); margin:10px 0 20px; line-height:1.5; }
+  .modal-actions{ display:flex; gap:10px; }
+  .btn{ flex:1; padding:13px; border-radius:12px; font-weight:800; font-size:14.5px; }
+  .btn.ghost{ background:var(--paper); color:var(--ink); }
+  .btn.primary{ background:var(--blue); color:#fff; }
+  .btn.danger{ background:var(--danger); color:#fff; }
+  .btn[disabled]{ opacity:.45; pointer-events:none; }
+  .btn:active{ transform:scale(.96); }
+  .modal-body{ font-size:13.5px; color:var(--ink-soft); margin:12px 0 20px; line-height:1.55; text-align:center; }
+  .cf-mission{ font-family:var(--display); font-size:18px; color:var(--ink); margin-bottom:12px; }
+  .cf-guide{ background:var(--blue-tint); color:var(--blue-deep); border-radius:12px;
+    padding:12px 14px; font-size:13px; line-height:1.5; font-weight:600; text-align:left; }
+  .cf-guide b{ font-weight:800; }
+
+  /* claim (photo) modal */
+  .modal.claim{ max-width:360px; text-align:left; position:relative; padding:22px 20px 18px; }
+  .claim-close{ position:absolute; top:10px; right:12px; font-size:24px; line-height:1;
+    color:var(--ink-soft); width:32px; height:32px; }
+  .claim-tier{ font-family:var(--display); font-size:14px; color:var(--amber-deep); }
+  .claim-name{ font-family:var(--display); font-size:22px; margin:2px 0 10px; }
+  .claim-guide{ font-size:13px; color:var(--ink-soft); line-height:1.55; margin-bottom:14px; }
+  .claim-done-note{ background:var(--green-tint); color:var(--green); border-radius:12px;
+    padding:12px 14px; font-size:13px; font-weight:700; line-height:1.5; margin-bottom:16px; }
+  .claim-count{ font-size:12.5px; font-weight:800; color:var(--blue); margin-bottom:10px; }
+  .photo-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-bottom:18px; }
+  .thumb{ position:relative; aspect-ratio:1/1; border-radius:12px; overflow:hidden;
+    background:var(--paper) center/cover no-repeat; border:1.5px solid var(--line); }
+  .thumb-x{ position:absolute; top:4px; right:4px; width:22px; height:22px; border-radius:50%;
+    background:rgba(20,33,61,.62); color:#fff; font-size:15px; line-height:1; display:grid; place-items:center; }
+  .thumb.add{ display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:5px; border:1.5px dashed #B7C4DC; color:var(--ink-soft); cursor:pointer;
+    font-size:11px; font-weight:700; }
+  .thumb.add svg{ width:22px; height:22px; }
+
+  @media (prefers-reduced-motion:reduce){
+    *{ animation-duration:.001ms !important; transition-duration:.001ms !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.2 4.2L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="name">빙고 카드</span>
+      </div>
+      <div class="dots" role="tablist" aria-label="화면 전환">
+        <button class="dot active" data-page="0" role="tab" aria-label="빙고판"></button>
+        <button class="dot" data-page="1" role="tab" aria-label="미션"></button>
+      </div>
+      <button class="reset-btn" id="resetBtn" aria-label="처음부터 다시">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 1 1 2.3 5.6M4 12V7m0 5h5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </header>
+
+    <div class="viewport" id="viewport">
+      <div class="track" id="track">
+
+        <!-- PAGE 1 : 빙고판 -->
+        <section class="panel" id="panelBingo" aria-label="빙고판">
+          <div class="panel-inner">
+            <div class="eyebrow">나의 진행</div>
+            <div class="count-row">
+              <span class="count-num" id="countNum">0</span>
+              <span class="count-unit">빙고</span>
+            </div>
+            <div class="count-sub" id="countSub">미션을 완료하면 칸이 채워져요</div>
+
+            <div class="board" id="board" role="grid" aria-label="5x5 빙고판"></div>
+
+            <div class="section-label">상품</div>
+            <div class="prizes" id="prizes"></div>
+          </div>
+        </section>
+
+        <!-- PAGE 2 : 미션 -->
+        <section class="panel" id="panelMission" aria-label="미션">
+          <div class="panel-inner">
+            <div class="eyebrow">미션</div>
+            <div class="m-progress"><span id="mCount">0</span> / 25 완료</div>
+            <div class="m-bar"><i id="mBarFill"></i></div>
+            <div class="m-list" id="missions"></div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- confirm modal (complete / cancel / reset) -->
+  <div class="modal-backdrop" id="confirmModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cfTitle">
+      <div class="modal-title" id="cfTitle"></div>
+      <div class="modal-body" id="cfBody"></div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="cfCancel">취소</button>
+        <button class="btn primary" id="cfOk">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- claim modal (attach proof photos) -->
+  <div class="modal-backdrop" id="claimModal" hidden>
+    <div class="modal claim" role="dialog" aria-modal="true">
+      <button class="claim-close" id="claimClose" aria-label="닫기">&times;</button>
+      <div id="claimBody"></div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* =========================================================
+     여기만 바꾸면 미션·상품 내용이 바뀝니다.
+     미션은 25개(5x5), 순서대로 1번칸 ~ 25번칸에 연결됩니다.
+  ========================================================= */
+  const MISSIONS = Array.from({length:25}, (_,i)=>({
+    title: "임시미션" + (i+1)
+  }));
+
+  const PRIZES = [
+    { key:"b1",  tier:"1빙고",  name:"임시상품1", type:"bingo", need:1,  photos:1 },
+    { key:"b2",  tier:"2빙고",  name:"임시상품2", type:"bingo", need:2,  photos:1 },
+    { key:"b3",  tier:"3빙고",  name:"임시상품3", type:"bingo", need:3,  photos:1 },
+    { key:"all", tier:"올빙고", name:"임시상품4", type:"all",  need:25, photos:5 },
+  ];
+  /* ========================================================= */
+
+  const TOTAL = 25;
+  const STORE_KEY = "bingo-card-pwa-v1";
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const CHECK = '<svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.2 4.2L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const LOCK  = '<svg viewBox="0 0 24 24" fill="none"><rect x="5" y="10.5" width="14" height="9" rx="2.4" stroke="currentColor" stroke-width="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+  const CAMERA = '<svg viewBox="0 0 24 24" fill="none"><path d="M4.5 8.5h2.7l1.2-1.9h7.2l1.2 1.9h2.7a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.1" stroke="currentColor" stroke-width="1.7"/></svg>';
+
+  // all 12 bingo lines (5 rows, 5 cols, 2 diagonals)
+  const LINES = (function(){
+    const L = [];
+    for(let r=0;r<5;r++) L.push([0,1,2,3,4].map(c=>r*5+c));
+    for(let c=0;c<5;c++) L.push([0,1,2,3,4].map(r=>r*5+c));
+    L.push([0,6,12,18,24]);
+    L.push([4,8,12,16,20]);
+    return L;
+  })();
+
+  // ---- state + storage (localStorage when hosted, in-memory fallback in preview) ----
+  let mem = null;
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(STORE_KEY);
+      if(raw) return JSON.parse(raw);
+    }catch(e){}
+    if(mem) return mem;
+    return null;
+  }
+  function saveState(){
+    mem = state;
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
+  }
+  function freshState(){
+    return {
+      done: Array(TOTAL).fill(false),
+      times: Array(TOTAL).fill(null),
+      seenBingo:0, seenAll:false,
+      photos:{}, claimed:{}
+    };
+  }
+
+  let state = loadState() || freshState();
+  // normalize so older saved data keeps working
+  if(!Array.isArray(state.done) || state.done.length!==TOTAL) state = freshState();
+  if(!Array.isArray(state.times) || state.times.length!==TOTAL) state.times = Array(TOTAL).fill(null);
+  if(!state.photos || typeof state.photos!=="object") state.photos = {};
+  if(!state.claimed || typeof state.claimed!=="object") state.claimed = {};
+  PRIZES.forEach(p=>{
+    if(!Array.isArray(state.photos[p.key])) state.photos[p.key] = [];
+    if(typeof state.claimed[p.key]!=="boolean") state.claimed[p.key] = false;
+  });
+
+  // ---- derived ----
+  function completedLines(){
+    const out = [];
+    LINES.forEach((line,i)=>{ if(line.every(idx=>state.done[idx])) out.push(i); });
+    return out;
+  }
+  function bingoCount(){ return completedLines().length; }
+  function doneCount(){ return state.done.filter(Boolean).length; }
+  function allCleared(){ return doneCount()===TOTAL; }
+  function cellsInBingo(){
+    const set = new Set();
+    completedLines().forEach(li=> LINES[li].forEach(idx=>set.add(idx)));
+    return set;
+  }
+  function prizeAchieved(p){
+    return p.type==="all" ? allCleared() : bingoCount() >= p.need;
+  }
+  function fmtTime(ts){
+    if(!ts) return "";
+    const d = new Date(ts);
+    const mm = d.getMonth()+1, dd = d.getDate();
+    const hh = String(d.getHours()).padStart(2,"0");
+    const mi = String(d.getMinutes()).padStart(2,"0");
+    return mm+"월 "+dd+"일 "+hh+":"+mi;
+  }
+
+  // ---- element refs ----
+  const boardEl   = document.getElementById("board");
+  const missionsEl= document.getElementById("missions");
+  const prizesEl  = document.getElementById("prizes");
+  const countNum  = document.getElementById("countNum");
+  const countSub  = document.getElementById("countSub");
+  const mCount    = document.getElementById("mCount");
+  const mBarFill  = document.getElementById("mBarFill");
+
+  const cells = [];
+  const rows  = [];
+  const prizeCards = [];
+
+  // ---- build board ----
+  MISSIONS.forEach((m,i)=>{
+    const cell = document.createElement("div");
+    cell.className = "cell";
+    cell.setAttribute("role","gridcell");
+    cell.setAttribute("aria-label", (i+1)+"번 칸, "+m.title);
+    cell.innerHTML = '<span class="num">'+(i+1)+'</span><span class="stamp">'+CHECK+'</span>';
+    boardEl.appendChild(cell);
+    cells.push(cell);
+  });
+
+  // ---- build missions ----
+  MISSIONS.forEach((m,i)=>{
+    const row = document.createElement("button");
+    row.className = "m-row";
+    row.setAttribute("aria-pressed","false");
+    row.innerHTML =
+      '<span class="m-check">'+CHECK+'</span>'+
+      '<span class="m-body"><span class="m-title">'+m.title+'</span>'+
+      '<span class="m-sub">빙고판 '+(i+1)+'번 칸</span></span>'+
+      '<span class="m-state">완료</span>';
+    row.addEventListener("click", ()=>requestToggle(i));
+    missionsEl.appendChild(row);
+    rows.push(row);
+  });
+
+  // ---- build prizes ----
+  PRIZES.forEach((p,i)=>{
+    const card = document.createElement("div");
+    card.className = "prize";
+    const lockText = p.type==="all" ? "모든 칸을 채우면 받기" : p.need+"빙고 달성 시 받기";
+    card.innerHTML =
+      '<div class="p-top"><span class="p-tier">'+p.tier+'</span>'+
+      '<span class="p-badge">'+LOCK+'</span></div>'+
+      '<div class="p-name">'+p.name+'</div>'+
+      '<div class="p-state">'+lockText+'</div>';
+    card.addEventListener("click", ()=>{
+      if(prizeAchieved(p)) openClaim(p.key);
+      else showToast(p.type==="all" ? "먼저 올빙고를 달성해 주세요" : ("먼저 "+p.need+"빙고를 달성해 주세요"));
+    });
+    prizesEl.appendChild(card);
+    prizeCards.push({ el:card, badge:card.querySelector(".p-badge"), state:card.querySelector(".p-state"), lockText });
+  });
+
+  // ---- render ----
+  function refresh(opts){
+    opts = opts || {};
+    const inBingo = cellsInBingo();
+
+    // board
+    cells.forEach((cell,i)=>{
+      const on = state.done[i];
+      const wasStamped = cell.classList.contains("stamped");
+      cell.classList.toggle("stamped", on);
+      if(on && !wasStamped && opts.stampIndex===i && !reduceMotion){
+        cell.classList.remove("pop"); void cell.offsetWidth; cell.classList.add("pop");
+      }
+      cell.classList.toggle("in-line", inBingo.has(i));
+    });
+
+    // pulse newly completed lines
+    if(opts.newLines && opts.newLines.length && !reduceMotion){
+      const pulse = new Set();
+      opts.newLines.forEach(li=> LINES[li].forEach(idx=>pulse.add(idx)));
+      pulse.forEach(idx=>{
+        const c = cells[idx];
+        c.classList.remove("line-pulse"); void c.offsetWidth; c.classList.add("line-pulse");
+      });
+    }
+
+    // missions
+    rows.forEach((row,i)=>{
+      const on = state.done[i];
+      row.classList.toggle("done", on);
+      row.setAttribute("aria-pressed", on ? "true" : "false");
+      row.querySelector(".m-sub").textContent =
+        on ? ("완료 · "+fmtTime(state.times[i])) : ("빙고판 "+(i+1)+"번 칸");
+    });
+
+    // counters
+    const bc = bingoCount(), dc = doneCount(), left = TOTAL - dc;
+    countNum.textContent = bc;
+    countSub.innerHTML = left>0
+      ? '<b>'+dc+'</b>칸 완료 · '+left+'칸 남음'
+      : '올빙고 완성! 모든 칸을 채웠어요 🎉';
+    mCount.textContent = dc;
+    mBarFill.style.width = (dc/TOTAL*100)+"%";
+
+    // prizes
+    prizeCards.forEach((pc,i)=>{
+      const p = PRIZES[i];
+      const achieved = prizeAchieved(p);
+      const claimed = achieved && state.claimed[p.key];
+      const ready = achieved && !claimed;
+      pc.el.classList.toggle("ready", ready);
+      pc.el.classList.toggle("claimed", claimed);
+      if(claimed){
+        pc.badge.innerHTML = CHECK;
+        pc.state.textContent = "받기 완료 · 사진 "+state.photos[p.key].length+"장";
+      } else if(ready){
+        pc.badge.innerHTML = CAMERA;
+        pc.state.textContent = "사진 "+p.photos+"장 첨부하고 받기 →";
+      } else {
+        pc.badge.innerHTML = LOCK;
+        pc.state.textContent = pc.lockText;
+      }
+    });
+  }
+
+  // ---- mission complete flow (with a confirm step) ----
+  function requestToggle(i){
+    if(!state.done[i]){
+      openConfirm({
+        title:"미션을 완료했나요?",
+        bodyHtml:'<div class="cf-mission">'+MISSIONS[i].title+'</div>'+
+          '<div class="cf-guide">⚡ 미션 클리어 후 즉시 <b>완료</b> 버튼을 눌러주세요!<br>'+
+          '지금 시각이 완료 시각으로 기록돼요.</div>',
+        okLabel:"완료", okClass:"primary",
+        onOk:()=>setMission(i, true)
+      });
+    } else {
+      openConfirm({
+        title:"완료를 취소할까요?",
+        bodyHtml:"기록된 완료 시각이 지워지고, 빙고판 칸도 다시 비워져요.",
+        okLabel:"완료 취소", okClass:"danger",
+        onOk:()=>setMission(i, false)
+      });
+    }
+  }
+  function setMission(i, done){
+    const before = new Set(completedLines());
+    state.done[i] = done;
+    state.times[i] = done ? Date.now() : null;
+    saveState();
+    const after = new Set(completedLines());
+    const newLines = [...after].filter(x=>!before.has(x));
+    refresh({ stampIndex: done ? i : -1, newLines });
+    celebrate();
+  }
+
+  // ---- celebration ----
+  function celebrate(){
+    const bc = bingoCount();
+    if(allCleared() && !state.seenAll){
+      state.seenAll = true; state.seenBingo = bc; saveState();
+      showToast("🎉 올빙고 달성! 상품을 받아보세요");
+      grandBurst();
+      return;
+    }
+    if(bc > state.seenBingo){
+      state.seenBingo = bc; saveState();
+      showToast("🎉 "+bc+"빙고 달성! 상품을 받아보세요");
+      burst(window.innerWidth/2, window.innerHeight*0.32);
+    } else if(bc < state.seenBingo){
+      state.seenBingo = bc;
+      if(!allCleared()) state.seenAll = false;
+      saveState();
+    }
+  }
+
+  // ---- toast ----
+  const toastEl = document.createElement("div");
+  toastEl.className = "toast";
+  document.body.appendChild(toastEl);
+  let toastTimer = null;
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>toastEl.classList.remove("show"), 2300);
+  }
+
+  // ---- confetti ----
+  const COLORS = ["#2563EB","#FFB020","#FF4D8D","#1E48C4","#FFD37A"];
+  function burst(x,y){
+    if(reduceMotion) return;
+    for(let k=0;k<26;k++){
+      const p = document.createElement("i");
+      p.className = "confetti";
+      p.style.background = COLORS[k % COLORS.length];
+      p.style.left = x+"px"; p.style.top = y+"px";
+      const ang = Math.random()*Math.PI*2, dist = 60+Math.random()*150;
+      p.style.setProperty("--dx", Math.cos(ang)*dist + "px");
+      p.style.setProperty("--dy", (Math.sin(ang)*dist - 50) + "px");
+      p.style.setProperty("--rot", (Math.random()*720-360) + "deg");
+      p.style.animationDelay = (Math.random()*80) + "ms";
+      document.body.appendChild(p);
+      setTimeout(()=>p.remove(), 1300);
+    }
+  }
+  function grandBurst(){
+    burst(window.innerWidth*0.5, window.innerHeight*0.4);
+    setTimeout(()=>burst(window.innerWidth*0.25, window.innerHeight*0.45), 160);
+    setTimeout(()=>burst(window.innerWidth*0.75, window.innerHeight*0.45), 300);
+  }
+
+  /* =========================================================
+     Swipe navigation
+  ========================================================= */
+  const viewport = document.getElementById("viewport");
+  const track = document.getElementById("track");
+  const dots = Array.from(document.querySelectorAll(".dot"));
+  const PAGES = 2;
+  let page = 0;
+
+  function vw(){ return viewport.clientWidth; }
+  function setPage(p){
+    page = Math.max(0, Math.min(PAGES-1, p));
+    track.style.transition = "transform .34s cubic-bezier(.4,.9,.3,1)";
+    track.style.transform = "translateX(" + (-page*vw()) + "px)";
+    dots.forEach((d,i)=>d.classList.toggle("active", i===page));
+  }
+  dots.forEach(d=> d.addEventListener("click", ()=>setPage(+d.dataset.page)));
+  window.addEventListener("resize", ()=>{
+    track.style.transition = "none";
+    track.style.transform = "translateX(" + (-page*vw()) + "px)";
+  });
+  window.addEventListener("keydown", e=>{
+    if(e.key==="ArrowRight") setPage(page+1);
+    if(e.key==="ArrowLeft")  setPage(page-1);
+  });
+
+  // touch
+  let startX=0, startY=0, dx=0, decided=false, horizontal=false, dragging=false;
+  viewport.addEventListener("touchstart", e=>{
+    const t=e.touches[0]; startX=t.clientX; startY=t.clientY;
+    dx=0; decided=false; horizontal=false; dragging=true;
+    track.style.transition="none";
+  }, {passive:true});
+  viewport.addEventListener("touchmove", e=>{
+    if(!dragging) return;
+    const t=e.touches[0];
+    dx = t.clientX-startX;
+    const dy = t.clientY-startY;
+    if(!decided && (Math.abs(dx)>8 || Math.abs(dy)>8)){
+      decided=true; horizontal = Math.abs(dx) > Math.abs(dy);
+    }
+    if(decided && horizontal){
+      e.preventDefault();
+      let x = -page*vw() + dx;
+      const min = -(PAGES-1)*vw();
+      if(x>0) x = x*0.35;                 // rubber-band at edges
+      if(x<min) x = min + (x-min)*0.35;
+      track.style.transform = "translateX(" + x + "px)";
+    }
+  }, {passive:false});
+  viewport.addEventListener("touchend", ()=>{
+    if(!dragging) return; dragging=false;
+    if(decided && horizontal){
+      const threshold = vw()*0.18;
+      if(dx < -threshold) setPage(page+1);
+      else if(dx > threshold) setPage(page-1);
+      else setPage(page);
+    }
+  });
+
+  /* =========================================================
+     Confirm modal (complete / cancel / reset)
+  ========================================================= */
+  const confirmModal = document.getElementById("confirmModal");
+  const cfTitle  = document.getElementById("cfTitle");
+  const cfBody   = document.getElementById("cfBody");
+  const cfOk     = document.getElementById("cfOk");
+  const cfCancel = document.getElementById("cfCancel");
+  let cfOnOk = null;
+  function openConfirm(o){
+    cfTitle.textContent = o.title;
+    cfBody.innerHTML = o.bodyHtml || "";
+    cfOk.textContent = o.okLabel || "확인";
+    cfOk.className = "btn " + (o.okClass || "primary");
+    cfOnOk = o.onOk || null;
+    confirmModal.hidden = false;
+  }
+  function closeConfirm(){ confirmModal.hidden = true; cfOnOk = null; }
+  cfOk.addEventListener("click", ()=>{ const f = cfOnOk; closeConfirm(); if(f) f(); });
+  cfCancel.addEventListener("click", closeConfirm);
+  confirmModal.addEventListener("click", e=>{ if(e.target===confirmModal) closeConfirm(); });
+
+  document.getElementById("resetBtn").addEventListener("click", ()=>{
+    openConfirm({
+      title:"처음부터 다시 할까요?",
+      bodyHtml:"완료한 미션과 빙고 기록, 첨부한 사진이 모두 지워져요.",
+      okLabel:"초기화", okClass:"danger",
+      onOk:()=>{
+        state = freshState();
+        PRIZES.forEach(p=>{ state.photos[p.key]=[]; state.claimed[p.key]=false; });
+        saveState(); refresh({}); setPage(0);
+      }
+    });
+  });
+
+  /* =========================================================
+     Claim modal (attach proof photos, shown to the organizer)
+  ========================================================= */
+  const claimModal = document.getElementById("claimModal");
+  const claimBody  = document.getElementById("claimBody");
+  document.getElementById("claimClose").addEventListener("click", ()=>{ claimModal.hidden = true; });
+  claimModal.addEventListener("click", e=>{ if(e.target===claimModal) claimModal.hidden = true; });
+  let claimKey = null;
+
+  function openClaim(key){ claimKey = key; renderClaim(); claimModal.hidden = false; }
+
+  function renderClaim(){
+    const p = PRIZES.find(x=>x.key===claimKey);
+    const list = state.photos[p.key];
+    const need = p.photos;
+    const claimed = state.claimed[p.key];
+    const enough = list.length >= need;
+
+    let thumbs = "";
+    list.forEach((src,idx)=>{
+      thumbs += '<div class="thumb" data-pi="'+idx+'">'+
+        (claimed ? "" : '<button class="thumb-x" data-idx="'+idx+'" aria-label="사진 삭제">&times;</button>')+
+        '</div>';
+    });
+    if(!claimed && list.length < need){
+      thumbs += '<label class="thumb add">'+CAMERA+'<span>사진 추가</span>'+
+        '<input type="file" accept="image/*" multiple hidden id="photoInput"></label>';
+    }
+
+    const guide = claimed
+      ? '<div class="claim-done-note">받기 완료! 현장에서 주최자에게 이 사진을 보여주세요.</div>'
+      : '<div class="claim-guide">현장에서 주최자에게 보여줄 인증 사진 '+need+'장을 첨부해 주세요. 받기 완료 후에는 되돌릴 수 없어요.</div>';
+
+    claimBody.innerHTML =
+      '<div class="claim-tier">'+p.tier+'</div>'+
+      '<div class="claim-name">'+p.name+'</div>'+
+      guide +
+      '<div class="claim-count">'+list.length+' / '+need+' 첨부됨</div>'+
+      '<div class="photo-grid">'+thumbs+'</div>'+
+      (claimed
+        ? '<button class="btn primary" id="claimSubmit">닫기</button>'
+        : '<button class="btn primary" id="claimSubmit"'+(enough?"":" disabled")+'>상품 받기</button>');
+
+    claimBody.querySelectorAll(".thumb[data-pi]").forEach(t=>{
+      t.style.backgroundImage = "url('" + list[+t.dataset.pi] + "')";
+    });
+
+    const input = document.getElementById("photoInput");
+    if(input){
+      input.addEventListener("change", async (e)=>{
+        const files = Array.from(e.target.files || []);
+        for(const f of files){
+          if(state.photos[p.key].length >= need) break;
+          try{ state.photos[p.key].push(await fileToThumb(f)); }
+          catch(err){ showToast("사진을 불러오지 못했어요"); }
+        }
+        saveState();
+        renderClaim();
+      });
+    }
+    claimBody.querySelectorAll(".thumb-x").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        state.photos[p.key].splice(+btn.dataset.idx, 1);
+        saveState();
+        renderClaim();
+      });
+    });
+    document.getElementById("claimSubmit").addEventListener("click", ()=>{
+      if(claimed){ claimModal.hidden = true; return; }
+      if(state.photos[p.key].length < need){ showToast("사진 "+need+"장을 모두 첨부해 주세요"); return; }
+      state.claimed[p.key] = true;
+      saveState();
+      claimModal.hidden = true;
+      refresh({});
+      showToast("🎁 "+p.name+" 받기 완료");
+      burst(window.innerWidth/2, window.innerHeight*0.3);
+    });
+  }
+
+  // downscale a picked image to a small JPEG data URL so it fits in storage
+  function fileToThumb(file, maxSize, quality){
+    maxSize = maxSize || 800; quality = quality || 0.55;
+    return new Promise((resolve,reject)=>{
+      if(!file || !file.type || file.type.indexOf("image/")!==0){ reject(new Error("not image")); return; }
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = ()=>{
+        URL.revokeObjectURL(url);
+        let w = img.naturalWidth, h = img.naturalHeight;
+        const s = Math.min(1, maxSize/Math.max(w,h));
+        w = Math.max(1, Math.round(w*s)); h = Math.max(1, Math.round(h*s));
+        const c = document.createElement("canvas");
+        c.width = w; c.height = h;
+        c.getContext("2d").drawImage(img,0,0,w,h);
+        try{ resolve(c.toDataURL("image/jpeg", quality)); }
+        catch(e){ reject(e); }
+      };
+      img.onerror = ()=>{ URL.revokeObjectURL(url); reject(new Error("load error")); };
+      img.src = url;
+    });
+  }
+
+  // ---- init ----
+  refresh({});
+  setPage(0);
+
+  // ---- PWA service worker (harmless if the file isn't present, e.g. in preview) ----
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", ()=>{
+      navigator.serviceWorker.register("sw.js").catch(()=>{});
+    });
+  }
+})();
+</script>
+</body>
+</html>
