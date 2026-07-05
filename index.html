@@ -120,7 +120,7 @@
 
   .board{
     margin:18px 0 26px;
-    display:grid; grid-template-columns:repeat(5,1fr); gap:8px;
+    display:grid; grid-template-columns:repeat(4,1fr); gap:8px;
   }
   .cell{
     position:relative; aspect-ratio:1/1;
@@ -348,7 +348,7 @@
             </div>
             <div class="count-sub" id="countSub">미션을 완료하면 칸이 채워져요</div>
 
-            <div class="board" id="board" role="grid" aria-label="5x5 빙고판"></div>
+            <div class="board" id="board" role="grid" aria-label="4x4 빙고판"></div>
 
             <div class="section-label">상품</div>
             <div class="prizes" id="prizes"></div>
@@ -359,7 +359,7 @@
         <section class="panel" id="panelMission" aria-label="미션">
           <div class="panel-inner">
             <div class="eyebrow">미션</div>
-            <div class="m-progress"><span id="mCount">0</span> / 25 완료</div>
+            <div class="m-progress"><span id="mCount">0</span> / <span id="mTotal">16</span> 완료</div>
             <div class="m-bar"><i id="mBarFill"></i></div>
             <div class="m-list" id="missions"></div>
           </div>
@@ -395,35 +395,52 @@
 
   /* =========================================================
      여기만 바꾸면 미션·상품 내용이 바뀝니다.
-     미션은 25개(5x5), 순서대로 1번칸 ~ 25번칸에 연결됩니다.
+     미션은 16개(4x4), 순서대로 1번칸 ~ 16번칸에 연결됩니다.
   ========================================================= */
-  const MISSIONS = Array.from({length:25}, (_,i)=>({
-    title: "임시미션" + (i+1)
-  }));
+  const MISSIONS = [
+    { title: '담임 선생님과 눈을 마주치고 "감사합니다" 인사하기' },
+    { title: '급식·조리 선생님께 "잘 먹었습니다" 인사하기' },
+    { title: '내 자리와 주변을 깨끗이 정리해 교실을 깔끔하게 하기' },
+    { title: '선생님 말씀을 끝까지 경청하고 잘 반응하며 듣기' },
+    { title: '수업 중 손을 들고 적극적으로 참여하기' },
+    { title: '수업 시간에 바른 자세로 끝까지 집중하기' },
+    { title: '칠판을 깨끗이 지우고 수업 준비 도와드리기' },
+    { title: '복도·교무실에서 문을 잡아드리고 공손히 인사하기' },
+    { title: '미화원·주무관·경비 선생님께 감사 인사 전하기' },
+    { title: '수업 끝나고 "오늘 수업 감사합니다" 인사하고 나오기' },
+    { title: '급식실에서 식판을 깨끗이 정리하기' },
+    { title: '모르는 걸 여쭤보고 알려주신 뒤 꼭 감사 인사하기' },
+    { title: '지각·준비물 등 내 할 일을 잘 지켜 선생님 덜 힘들게 하기' },
+    { title: '프린트물을 나눠드리거나 다 걷어서 갖다드리기' },
+    { title: '하루 동안 만나는 모든 선생님께 먼저 밝게 인사하기' },
+    { title: '가장 고마운 선생님께 진심을 담아 직접 감사 전하기' },
+  ];
 
   const PRIZES = [
-    { key:"b1",  tier:"1빙고",  name:"임시상품1", type:"bingo", need:1,  photos:1 },
-    { key:"b2",  tier:"2빙고",  name:"임시상품2", type:"bingo", need:2,  photos:1 },
-    { key:"b3",  tier:"3빙고",  name:"임시상품3", type:"bingo", need:3,  photos:1 },
-    { key:"all", tier:"올빙고", name:"임시상품4", type:"all",  need:25, photos:5 },
+    { key:"b1",  tier:"1빙고",  name:"새콤달콤", type:"bingo", need:1,  photos:1 },
+    { key:"b2",  tier:"2빙고",  name:"과자",     type:"bingo", need:2,  photos:1 },
+    { key:"b3",  tier:"3빙고",  name:"젤리",     type:"bingo", need:3,  photos:1 },
+    { key:"all", tier:"올빙고", name:"베스킨라빈스 아이스크림", type:"all", need:16, photos:5 },
   ];
   /* ========================================================= */
 
-  const TOTAL = 25;
-  const STORE_KEY = "bingo-card-pwa-v1";
+  const SIZE = 4;                 // 4x4 빙고판
+  const TOTAL = SIZE * SIZE;      // 16칸 / 16미션
+  const STORE_KEY = "bingo-card-pwa-v2";
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const CHECK = '<svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.2 4.2L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const LOCK  = '<svg viewBox="0 0 24 24" fill="none"><rect x="5" y="10.5" width="14" height="9" rx="2.4" stroke="currentColor" stroke-width="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
   const CAMERA = '<svg viewBox="0 0 24 24" fill="none"><path d="M4.5 8.5h2.7l1.2-1.9h7.2l1.2 1.9h2.7a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.1" stroke="currentColor" stroke-width="1.7"/></svg>';
 
-  // all 12 bingo lines (5 rows, 5 cols, 2 diagonals)
+  // bingo lines: SIZE rows + SIZE cols + 2 diagonals
   const LINES = (function(){
     const L = [];
-    for(let r=0;r<5;r++) L.push([0,1,2,3,4].map(c=>r*5+c));
-    for(let c=0;c<5;c++) L.push([0,1,2,3,4].map(r=>r*5+c));
-    L.push([0,6,12,18,24]);
-    L.push([4,8,12,16,20]);
+    for(let r=0;r<SIZE;r++){ const a=[]; for(let c=0;c<SIZE;c++) a.push(r*SIZE+c); L.push(a); }
+    for(let c=0;c<SIZE;c++){ const a=[]; for(let r=0;r<SIZE;r++) a.push(r*SIZE+c); L.push(a); }
+    const d1=[], d2=[];
+    for(let i=0;i<SIZE;i++){ d1.push(i*SIZE+i); d2.push(i*SIZE+(SIZE-1-i)); }
+    L.push(d1); L.push(d2);
     return L;
   })();
 
@@ -501,6 +518,7 @@
   const prizeCards = [];
 
   // ---- build board ----
+  boardEl.style.gridTemplateColumns = "repeat(" + SIZE + ",1fr)";
   MISSIONS.forEach((m,i)=>{
     const cell = document.createElement("div");
     cell.className = "cell";
@@ -894,6 +912,7 @@
   }
 
   // ---- init ----
+  document.getElementById("mTotal").textContent = TOTAL;
   refresh({});
   setPage(0);
 
