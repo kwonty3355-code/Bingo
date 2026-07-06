@@ -1,7 +1,7 @@
 {
-  "name": "빙고 카드",
-  "short_name": "빙고 카드",
-  "description": "미션을 완료하고 빙고를 맞춰 상품을 받는 빙고 카드",
+  "name": "가시성의 불평등 해소하기",
+  "short_name": "불평등 해소하기",
+  "description": "학교를 위해 애써주시는 분들께 감사를 전하는 미션 빙고",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

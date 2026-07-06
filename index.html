@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
-<title>빙고 카드</title>
+<title>가시성의 불평등 해소하기</title>
 
 <!-- PWA -->
 <meta name="theme-color" content="#2563EB" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-<meta name="apple-mobile-web-app-title" content="빙고 카드" />
+<meta name="apple-mobile-web-app-title" content="불평등 해소하기" />
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icon-192.png" />
 
@@ -74,18 +74,18 @@
     background:var(--paper);
     z-index:20;
   }
-  .brand{ display:flex; align-items:center; gap:9px; }
+  .brand{ display:flex; align-items:center; gap:9px; min-width:0; }
   .brand .mark{
-    width:30px; height:30px; border-radius:9px;
+    width:30px; height:30px; border-radius:9px; flex-shrink:0;
     background:var(--blue); color:#fff;
     display:grid; place-items:center;
     box-shadow:0 6px 14px rgba(37,99,235,.35);
     transform:rotate(-6deg);
   }
   .brand .mark svg{ width:17px; height:17px; }
-  .brand .name{ font-family:var(--display); font-size:19px; letter-spacing:.3px; }
+  .brand .name{ font-family:var(--display); font-size:16px; line-height:1.15; letter-spacing:.2px; min-width:0; }
 
-  .dots{ display:flex; gap:7px; }
+  .dots{ display:flex; gap:7px; flex-shrink:0; }
   .dot{
     width:7px; height:7px; border-radius:99px; background:#C3D2EC;
     transition:width .3s ease, background .3s ease; cursor:pointer;
@@ -93,7 +93,7 @@
   .dot.active{ width:22px; background:var(--blue); }
 
   .reset-btn{
-    width:34px; height:34px; border-radius:10px;
+    width:34px; height:34px; border-radius:10px; flex-shrink:0;
     display:grid; place-items:center; color:var(--ink-soft);
     background:var(--surface); box-shadow:var(--shadow-sm);
   }
@@ -324,7 +324,7 @@
         <span class="mark" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.2 4.2L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
-        <span class="name">빙고 카드</span>
+        <span class="name">가시성의 불평등 해소하기</span>
       </div>
       <div class="dots" role="tablist" aria-label="화면 전환">
         <button class="dot active" data-page="0" role="tab" aria-label="빙고판"></button>
